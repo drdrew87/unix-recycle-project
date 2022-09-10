@@ -1,0 +1,194 @@
+#! /bin/bash
+
+function restore() {
+
+    function Initiation() {
+        bin_path=$HOME'/recyclebin'
+        restore_info=$HOME'/.restore.info'
+
+        restore_PATH=$(echo $(realpath $0));
+        recycle_PATH=$(dirname $restore_PATH)/recycle
+
+        RECURSIVE='false'
+        INTERACTIVE='false'
+        VERBOSE='false'
+
+        minor_error='false'
+    }
+
+    function Options() {
+        while getopts :ivr option
+        do
+            case $option in
+                i) INTERACTIVE='true';;
+                v) VERBOSE='true';;
+                r) RECURSIVE='true';;
+                \?) echo "$OPTARG is an invalid option" 1>&2
+                    exit 2 ;;
+            esac
+        done
+        shift $(($OPTIND - 1))
+        real_arguments=$(echo $*)
+    }
+
+    function NoFileNameError() {
+        echo "No filename provided as an argument" 1>&2
+        exit 2;
+    }
+
+
+    function FileNotExistError() {
+        echo "CANNOT FIND $1 in recycle bin" 1>&2
+        skip_name='yes';
+        minor_error='true'
+    }
+
+    function Validation() {
+        if [ $# -eq 0 ]; then
+            NoFileNameError;
+        fi
+
+        file_list=''
+        for file in $*
+        do
+            skip_name='no'
+
+            local file_name=$(basename ${file})
+            local file_path_in_bin=$bin_path'/'${file_name}
+
+            if [ ! -e ${bin_path}'/'${file_name} ] ; then
+                FileNotExistError ${file_path_in_bin};
+            fi
+
+            if [[ ! ${skip_name} = 'yes' ]]; then
+                file_list=${file_list}' '${file_path_in_bin}
+            fi
+        done
+
+    }
+
+    function CheckOverwriteInOriginal() {
+
+        if [ -e $1 ] && [ ! -w $1 ]; then 
+            echo "No write permission to replace file in original directory" 1>&2
+            minor_error='true'
+            goahead='no'
+
+        elif [ -e $1 ] && [ -w $1 ]; then
+                read -p "Do you want to overwrite $2 in its original directory? y/n : " overwrite
+                case $overwrite in
+                    [Yy]*) 
+                        echo "Overwritting destination file"
+                        goahead='yes';;
+                    [Nn]*) 
+                        echo "Process canceled. $2 will not be restored"
+                        goahead='no'
+                        minor_error='true';;
+                    *) 
+                        echo "Invalid response" 1>&2
+                        minor_error='true';;
+                esac
+        else
+            goahead='yes'
+        fi
+        
+    }
+
+    function RestoreFile() {
+        mv $1 $2 2> /dev/null;
+        restore_status=$?;
+    }
+
+    function RemoveLogRecord() {
+        if [[ $2 -eq 0 ]]; then
+            grep -v $1 ${restore_info} > .temp
+            cat .temp > $restore_info
+        fi
+    }
+
+    function MakeDirectoriesRecursively() {
+        while [[ $# -gt 0 ]]
+        do
+            local inode_id=$(echo $1 | rev | cut -d'_' -f1 | rev);
+            local original_path=$(grep ${inode_id} ${restore_info} | cut -d':' -f2)
+            local original_dir=$(dirname ${original_path})
+            mkdir -p ${original_dir} 2> /dev/null
+            shift $(($OPTIND - 1))
+        done        
+    }
+
+    function Verbose() {
+        if [[ ${VERBOSE} = 'true' ]]; then
+            if [[ $2 -eq 0 ]]; then
+                echo "restored $1"
+            fi
+        fi
+    }
+
+    function Main() {
+
+        if [[ ${RECURSIVE} = 'true' ]]; then
+            MakeDirectoriesRecursively $*;
+        fi
+
+        for file in $*
+        do
+            local file_name=$(basename ${file})
+            local file_path_in_bin=$bin_path'/'${file_name}
+            local inode_id=$(echo ${file_name} | rev | cut -d'_' -f1 | rev);
+            local original_path=$(grep ${inode_id} ${restore_info} | cut -d':' -f2)
+            local original_dirname=$(dirname ${original_path})
+
+            if [ -e ${original_dirname} ]; then
+
+                if [[ ${INTERACTIVE} = 'false' ]]; then
+                    CheckOverwriteInOriginal ${original_path} ${file_name};
+                    if [[ ${goahead} = 'yes' ]]; then
+                        RestoreFile ${file_path_in_bin} ${original_path};
+                        RemoveLogRecord ${inode_id} ${restore_status};
+                        Verbose ${original_path} ${restore_status};
+                    fi
+                fi
+
+                if [[ ${INTERACTIVE} = 'true' ]]; then
+                    read -p "restore: restore file ${file}? " interact
+                    case ${interact} in
+                        [Yy]*)
+                            CheckOverwriteInOriginal ${original_path} ${file_name};
+                            if [[ ${goahead} = 'yes' ]]; then
+                                RestoreFile ${file_path_in_bin} ${original_path};
+                                RemoveLogRecord ${inode_id} ${restore_status};
+                                Verbose ${original_path} ${restore_status};
+                            fi;;
+                        *)
+                            minor_error='true';;
+                    esac
+                fi
+            
+            else
+                echo "Error: ${original_dirname} does not exist. Please use recursive option" 1>&2
+                minor_error='true'
+            fi
+        done
+    }
+
+    function Exit() {
+        if [[ ! ${minor_error} = 'false' ]]; then
+            exit 1;
+        else
+            exit 0;
+        fi
+    }
+
+
+
+    Initiation;
+    Options $*;
+    Validation ${real_arguments};
+    Main ${file_list};
+    Exit;
+
+
+}   
+
+restore $*;

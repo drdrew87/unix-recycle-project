@@ -1,0 +1,226 @@
+#! /bin/bash
+
+function recycle() {
+    
+    function Initiation() {
+        # Check if bin folder exist, if not make bin folder 
+        bin_path=$HOME'/recyclebin'
+        if [[ ! -e $bin_path ]]; then
+            mkdir $bin_path
+        fi
+
+        # Check if resotre info file exist, if not create file
+        restore_info=$HOME'/.restore.info'
+        if [[ ! -e $restore_info ]]; then
+            touch $restore_info
+        fi
+
+        recycle_PATH=$(echo $(realpath $0));
+        restore_PATH=$(echo $HOME'/project/restore')
+
+        INTERACTIVE='false'
+        VERBOSE='false'
+        RECURSIVE='false'
+
+        minor_error='false'
+    
+    }
+
+    function Options() {
+        while getopts :ivr option
+        do
+            case $option in
+                i) INTERACTIVE='true';;
+                v) VERBOSE='true';;
+                r) RECURSIVE='true';;
+                \?) echo "$OPTARG is an invalid option" 1>&2
+                    exit 2 ;;
+            esac
+        done
+        shift $(($OPTIND - 1))
+        real_arguments=$*
+    }
+
+    function NoFileNameError() {
+        echo "No filename provided as an argument" 1>&2
+        exit 2;
+    }
+
+    function AttemptDeleteRecycleFile() {
+        echo "Attempting to delete recycle – operation aborted" 1>&2
+        exit 2;
+    }
+
+    function AttemptDeleteRestoreFile() {
+        echo "Attempting to delete restore – operation aborted" 1>&2
+        exit 2;
+    }
+
+    function FileNotExistError() {
+        echo "File $1 does not exist" 1>&2
+        skip_name='yes';
+        minor_error='true'
+    }
+
+    function NoWritePermissionError() {
+        echo "No write permission for File $1" 1>&2
+        skip_name='yes';
+        minor_error='true'
+    }
+
+    function DirectoryNameProvidedError() {
+        echo "$1 is a directory. Please enter the names of regular files" 1>&2
+        skip_name='yes'
+        minor_error='true'
+    }
+
+    function IncludeFileListinDir() {
+        skip_name='yes'
+        directory_files=$(find $1 -type f | tr '\n' ' ')
+        file_list=${file_list}$'\n'${directory_files}
+        dir_list=${dir_list}$'\n'$(find $1 -type d)
+    }
+
+    function Validation() {
+        if [ $# -eq 0 ]; then
+            NoFileNameError;
+        fi
+
+        file_list=''
+        dir_list=''
+        for file in $*
+        do
+            skip_name='no'
+
+            local file_real_path=$(realpath -q ${file})
+
+            if [[ ${recycle_PATH} = ${file_real_path} ]]; then
+                AttemptDeleteRecycleFile ${file};
+            fi
+
+            if [[ ${restore_PATH} = ${file_real_path} ]]; then
+                AttemptDeleteRestoreFile ${file};
+            fi              
+
+            if [ ! -e ${file} ] ; then
+                FileNotExistError ${file};
+            fi
+
+            if [ -d ${file} ] && [[ ${RECURSIVE} = 'false' ]]; then
+                DirectoryNameProvidedError ${file};
+            fi
+
+            if [ -d ${file} ] && [[ ${RECURSIVE} = 'true' ]]; then
+                IncludeFileListinDir ${file};
+            fi
+
+            if [[ ! ${skip_name} = 'yes' ]]; then
+                file_list=${file_list}$'\n'$file
+            fi
+        done
+    }
+
+    function PermissionValidation() {
+        file_list=''
+        for file in $*
+        do
+            skip_name='no'
+            if [ ! -w ${file} ] ; then
+                NoWritePermissionError ${file};
+            fi
+
+            if [[ ! ${skip_name} = 'yes' ]]; then
+                file_list=${file_list}$'\n'$file
+            fi
+        done
+    }
+
+    function MoveFile2Bin() {
+        mv $1 $2
+    }
+
+    function LogRestoreInfo() {
+        echo $1':'$2 >> ${restore_info}
+    }
+
+    function RemoveDirectories() {
+        count=$#
+        while [[ count -gt 0 ]]
+        do
+            rm -d $* 2> /dev/null
+            ((count--))
+        done
+        
+        while [[ $# -gt 0 ]]
+        do
+            if [ -e $1 ]; then
+                echo "Unable to remove directory $1" 1>&2
+                minor_error='true'   
+            fi
+            shift $(($OPTIND - 1))
+        done
+    }
+
+    function Verbose() {
+        if [[ ${VERBOSE} = 'true' ]]; then
+            echo "recycled $1"
+        fi
+    }
+
+    function Main() {
+        for file in $*
+        do
+            local file_path=$(realpath ${file})
+            local file_base_name=$(basename ${file})
+            local inode_id=$(ls -i ${file} | cut -d' ' -f1)
+            
+            local recycle_file_name=${file_base_name}'_'${inode_id}
+            local recycle_file_path=${bin_path}'/'${recycle_file_name}
+            
+            if [[ ${INTERACTIVE} = 'false' ]]; then
+                MoveFile2Bin ${file_path} ${recycle_file_path} ;
+                LogRestoreInfo ${recycle_file_name} ${file_path}
+                Verbose ${file};
+            fi
+
+            if [[ ${INTERACTIVE} = 'true' ]]; then
+                read -p "recycle: recycle file ${file}? " interact
+                case ${interact} in
+                    [Yy]*)
+                        MoveFile2Bin ${file_path} ${recycle_file_path} ;
+                        LogRestoreInfo ${recycle_file_name} ${file_path}
+                        Verbose ${file};;
+                    *)
+                        minor_error='true';;
+                esac
+            fi
+
+        done 
+
+        if [[ ${RECURSIVE} = 'true' ]]; then
+            RemoveDirectories ${dir_list};
+        fi
+    }
+
+    function Exit() {
+        if [[ ! ${minor_error} = 'false' ]]; then
+            exit 1;
+        else
+            exit 0;
+        fi
+    }
+
+
+    Initiation;
+    Options $*;
+    Validation ${real_arguments};
+    PermissionValidation ${file_list};
+    Main ${file_list};
+    Exit;
+
+
+}
+
+
+
+recycle $*;

@@ -1,0 +1,4 @@
+#! /bin/bash
+
+rm $HOME'/.restore.info'
+rm -r $HOME'/recyclebin/'

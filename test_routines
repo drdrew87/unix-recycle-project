@@ -1,0 +1,262 @@
+#! /bin/bash
+
+mkdir -p $HOME'/project/auto_test_dir/auto_test_dir2/auto_test_dir4'
+mkdir -p $HOME'/project/auto_test_dir/auto_test_dir3/auto_test_dir5'
+mkdir -p $HOME'/project/auto_test_dir/auto_test_dir3/auto_test_dir5/auto_test_dir5/auto_test_dir6'
+
+touch $HOME'/project/auto_test_dir/test001' $HOME'/project/auto_test_dir/test002' 
+touch $HOME'/project/auto_test_dir/auto_test_dir2/test201' $HOME'/project/auto_test_dir/auto_test_dir2/test002' 
+touch $HOME'/project/auto_test_dir/auto_test_dir3/auto_test_dir5/test_no_permission'
+chmod 400 $HOME'/project/auto_test_dir/auto_test_dir3/auto_test_dir5/test_no_permission'
+
+touch $HOME'/project/auto_test_dir/auto_test_dir3/auto_test_dir5/auto_test_dir5/auto_test_dir6/file'
+touch $HOME'/project/auto_test_dir/auto_test_dir2/auto_test_dir4/new_file'
+
+bash reset_recycle
+
+tput setaf 1; echo 'Test recycle no argument input'
+bash recycle 
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore no argument input'
+bash restore
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle non existing file input'
+bash recycle project/non_exist_file
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore non existing file input'
+bash restore project/non_exist_file
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle file with no write permision'
+bash recycle auto_test_dir/auto_test_dir3/auto_test_dir5/test_no_permission
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle recycle file'
+bash recycle $HOME/project/recycle
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle restore file'
+bash recycle $HOME/project/restore
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle recycle directory not in recursive mode'
+bash recycle $HOME/project/auto_test_dir
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle recycle directories not in recursive mode'
+bash recycle $HOME/project/auto_test_dir $HOME/project/auto_test_dir/auto_test_dir2
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+
+inode_id=$(ls -i auto_test_dir/test001 | cut -d' ' -f1)
+restore_file_name="$HOME/recyclebin/test001_$inode_id"
+tput setaf 1; echo 'Test recycle single file'
+bash recycle auto_test_dir/test001
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file'
+bash restore ${restore_file_name}
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+inode_id=$(ls -i $HOME/project/auto_test_dir/test002 | cut -d' ' -f1)
+restore_file_name2="$HOME/project/auto_test_dir/test002_$inode_id"
+tput setaf 1; echo 'Test recycle single file verbose'
+bash recycle -v auto_test_dir/test002
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file verbose'
+bash restore -v ${restore_file_name2}
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+inode_id2=$(ls -i $HOME/project/auto_test_dir/test002 | cut -d' ' -f1)
+restore_file_name2="$HOME/project/auto_test_dir/test002_$inode_id2"
+tput setaf 1; echo 'Test recycle single file interactive'
+bash recycle -i auto_test_dir/test002
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file interactive'
+bash restore -i ${restore_file_name2}
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+inode_id=$(ls -i auto_test_dir/test001 | cut -d' ' -f1)
+restore_file_name="$HOME/recyclebin/test001_$inode_id"
+inode_id2=$(ls -i $HOME/project/auto_test_dir/test002 | cut -d' ' -f1)
+restore_file_name2="$HOME/project/auto_test_dir/test002_$inode_id2"
+tput setaf 1; echo 'Test recycle multiple file'
+bash recycle auto_test_dir/test001 auto_test_dir/test002
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+
+tput setaf 1; echo 'Test restore multiple file'
+bash restore ${restore_file_name} ${restore_file_name2}
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+
+inode_id=$(ls -i auto_test_dir/test001 | cut -d' ' -f1)
+restore_file_name="$HOME/recyclebin/test001_$inode_id"
+tput setaf 1; echo 'Test recycle single file'
+bash recycle auto_test_dir/test001 
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file with existing file in place'
+touch auto_test_dir/test001
+bash restore ${restore_file_name} 
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+inode_id2=$(ls -i auto_test_dir/test002 | cut -d' ' -f1)
+restore_file_name2="$HOME/recyclebin/test002_$inode_id2"
+tput setaf 1; echo 'Test recycle single file'
+bash recycle auto_test_dir/test002 
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file with existing file in place no permission'
+touch auto_test_dir/test002
+chmod 400 auto_test_dir/test002
+bash restore ${restore_file_name2} 
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+rm -f auto_test_dir/test002
+
+
+inode_id_new=$(ls -i auto_test_dir/auto_test_dir2/auto_test_dir4/new_file | cut -d' ' -f1)
+restore_file_name_new="$HOME/recyclebin/new_file_$inode_id_new"
+tput setaf 1; echo 'Test recycle single file recursive'
+bash recycle -r auto_test_dir/auto_test_dir2/auto_test_dir4/new_file
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file recursive'
+bash restore -r ${restore_file_name_new}
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+
+tput setaf 1; echo 'Test recycle no permission'
+bash recycle -r auto_test_dir/auto_test_dir3/auto_test_dir5/test_no_permission 
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle one file no permission'
+bash recycle -r auto_test_dir/auto_test_dir3/auto_test_dir5/test_no_permission  auto_test_dir/auto_test_dir2/auto_test_dir4/new_file
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle folder'
+bash recycle -r auto_test_dir/auto_test_dir2/auto_test_dir4/
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore single file recursive'
+bash restore -r ${restore_file_name_new}
+echo $?; echo ''
+
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle one folder no permission'
+bash recycle -r auto_test_dir/auto_test_dir3/auto_test_dir5/  auto_test_dir/auto_test_dir2/auto_test_dir4/
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore non recursive mode cannot find directories'
+bash restore ../recyclebin/*
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle recursive batch process'
+bash recycle -r ./auto_test_dir/*
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore recursive restore everything'
+bash restore -r ../recyclebin/*
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test recycle parent and child directories'
+bash recycle -r ./auto_test_dir/ ./auto_test_dir/auto_test_dir2
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
+
+tput setaf 1; echo 'Test restore recursive restore everything'
+bash restore -r ../recyclebin/*
+echo $?; echo ''
+echo "************** RESTORE INFO ***************";echo '';cat ../.restore.info ; echo '';echo "*******************************************"
+echo ''
